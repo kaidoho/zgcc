@@ -1,0 +1,154 @@
+From 249c95fbe2ccfc7520d32058b4777ec8cc4fdb43 Mon Sep 17 00:00:00 2001
+From: kaidoho <kho237115@gmail.com>
+Date: Sun, 29 Dec 2019 05:19:39 -0500
+Subject: [PATCH] Add support for Zephyr OS
+
+---
+ config.sub                   |  2 +-
+ config/gthr.m4               |  1 +
+ configure                    |  6 ++++++
+ configure.ac                 |  6 ++++++
+ newlib/configure.host        | 12 ++++++++++++
+ newlib/libc/sys/configure    |  3 +++
+ newlib/libc/sys/configure.in |  1 +
+ 7 files changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/config.sub b/config.sub
+index c95acc6..251f082 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1364,7 +1364,7 @@ case $os in
+ 	     | ptx* | coff* | ecoff* | winnt* | domain* | vsta* \
+ 	     | udi* | eabi* | lites* | ieee* | go32* | aux* | hcos* \
+ 	     | chorusrdb* | cegcc* | glidix* \
+-	     | cygwin* | msys* | pe* | moss* | proelf* | rtems* \
++	     | cygwin* | msys* | pe* | moss* | proelf* | zephyr* | rtems* \
+ 	     | midipix* | mingw32* | mingw64* | linux-gnu* | linux-android* \
+ 	     | linux-newlib* | linux-musl* | linux-uclibc* \
+ 	     | uxpv* | beos* | mpeix* | udk* | moxiebox* \
+diff --git a/config/gthr.m4 b/config/gthr.m4
+index 7b29f1f..265639b 100644
+--- a/config/gthr.m4
++++ b/config/gthr.m4
+@@ -21,6 +21,7 @@ case $1 in
+     tpf)	thread_header=config/s390/gthr-tpf.h ;;
+     vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ AC_SUBST(thread_header)
+ ])
+diff --git a/configure b/configure
+index 5db5270..b6cd068 100755
+--- a/configure
++++ b/configure
+@@ -3484,6 +3484,9 @@ case "${target}" in
+   *-*-vxworks*)
+     noconfigdirs="$noconfigdirs ${libgcj}"
+     ;;
++  *-*-zephyr*)
++    noconfigdirs="$noconfigdirs ${libgcj}"
++    ;;
+   alpha*-*-*vms*)
+     noconfigdirs="$noconfigdirs ${libgcj}"
+     ;;
+@@ -3747,6 +3750,9 @@ case "${target}" in
+     ;;
+   *-*-vxworks*)
+     ;;
++  *-*-zephyr*)
++    noconfigdirs="$noconfigdirs target-libgloss"
++    ;;
+   alpha*-dec-osf*)
+     # ld works, but does not support shared libraries.
+     # gas doesn't generate exception information.
+diff --git a/configure.ac b/configure.ac
+index cf856e5..4041738 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -820,6 +820,9 @@ case "${target}" in
+   *-*-vxworks*)
+     noconfigdirs="$noconfigdirs ${libgcj}"
+     ;;
++  *-*-zephyr*)
++    noconfigdirs="$noconfigdirs ${libgcj}"
++    ;;
+   alpha*-*-*vms*)
+     noconfigdirs="$noconfigdirs ${libgcj}"
+     ;;
+@@ -1083,6 +1086,9 @@ case "${target}" in
+     ;;
+   *-*-vxworks*)
+     ;;
++  *-*-zephyr*)
++    noconfigdirs="$noconfigdirs target-libgloss"
++    ;;
+   alpha*-dec-osf*)
+     # ld works, but does not support shared libraries.
+     # gas doesn't generate exception information.
+diff --git a/newlib/configure.host b/newlib/configure.host
+index 6c49cb7..92bb255 100644
+--- a/newlib/configure.host
++++ b/newlib/configure.host
+@@ -435,6 +435,9 @@ case "${host}" in
+ 	sys_dir=tirtos
+ 	have_crt0="no"
+ 	;;
++  *-*-zephyr*)
++	sys_dir=zephyr
++	;;
+   a29k-*-*)
+ 	sys_dir=a29khif
+ 	signal_dir=
+@@ -653,6 +656,15 @@ newlib_cflags="${newlib_cflags} -DCLOCK_PROVIDED -DMALLOC_PROVIDED -DEXIT_PROVID
+   *-*-tirtos*)
+ 	newlib_cflags="${newlib_cflags} -D__DYNAMIC_REENT__ -DMALLOC_PROVIDED"
+ 	;;
++  *-*-zephyr*)
++	default_newlib_io_long_long="yes"
++	default_newlib_io_c99_formats="yes"
++	newlib_cflags="${newlib_cflags} -ffunction-sections -fdata-sections "
++	newlib_cflags="${newlib_cflags} -D_COMPILING_NEWLIB"
++	newlib_cflags="${newlib_cflags} -DCLOCK_PROVIDED -DMALLOC_PROVIDED -DEXIT_PROVIDED -DSIGNAL_PROVIDED -DGETREENT_PROVIDED -DREENTRANT_SYSCALLS_PROVIDED -DHAVE_NANOSLEEP -DHAVE_BLKSIZE -DHAVE_FCNTL -DHAVE_ASSERT_FUNC"
++    # turn off unsupported items in posix directory 
++	newlib_cflags="${newlib_cflags} -D_NO_GETLOGIN -D_NO_GETPWENT -D_NO_GETUT -D_NO_GETPASS -D_NO_SIGSET -D_NO_WORDEXP -D_NO_POPEN -D_NO_POSIX_SPAWN"
++	;;
+ # UDI doesn't have exec, so system() should fail the right way
+   a29k-amd-udi)
+ 	newlib_cflags="${newlib_cflags} -DNO_EXEC"
+diff --git a/newlib/libc/sys/configure b/newlib/libc/sys/configure
+index 08485a1..53e76bf 100755
+--- a/newlib/libc/sys/configure
++++ b/newlib/libc/sys/configure
+@@ -812,6 +812,7 @@ sysvnecv70
+ tic80
+ tirtos
+ w65
++zeephyr
+ z8ksim'
+ 
+ # Initialize some variables set by options.
+@@ -11874,6 +11875,8 @@ subdirs="$subdirs a29khif"
+ 	tirtos) subdirs="$subdirs tirtos"
+  ;;
+ 	w65) subdirs="$subdirs w65"
++ ;;
++	zephyr) subdirs="$subdirs zephyr"
+  ;;
+ 	z8ksim) subdirs="$subdirs z8ksim"
+  ;;
+diff --git a/newlib/libc/sys/configure.in b/newlib/libc/sys/configure.in
+index bc6cb88..d5bad69 100644
+--- a/newlib/libc/sys/configure.in
++++ b/newlib/libc/sys/configure.in
+@@ -48,6 +48,7 @@ if test -n "${sys_dir}"; then
+ 	tic80) AC_CONFIG_SUBDIRS(tic80) ;;
+ 	tirtos) AC_CONFIG_SUBDIRS(tirtos) ;;
+ 	w65) AC_CONFIG_SUBDIRS(w65) ;;
++	zephyr) AC_CONFIG_SUBDIRS(zephyr) ;;
+ 	z8ksim) AC_CONFIG_SUBDIRS(z8ksim) ;;
+   esac;
+ fi
+-- 
+2.17.1
+

@@ -162,23 +162,35 @@ def get_install_dir(top ,pkg):
 
 
 def get_package_spec(name , pkg_spec):
+    idx = name.find('-')
+
+    if idx != -1:
+        name = name[:idx]
+
     for pkg in pkg_spec['packages']:
         if pkg["name"] == name:
             return pkg
 
 
-def build_and_install(cmd, source_dir, env):
-    run_cmd_env(cmd, source_dir, env)
-
-    cmd = "make -j{0}".format(len(os.sched_getaffinity(0)))
-    run_cmd_env(cmd, source_dir, env)
-
-    cmd = "make install"
-    run_cmd_env(cmd, source_dir, env)
+def build_and_install(cfgcmd,makecmd,makeinstallcmd,  source_dir, env):
+    run_cmd_env(cfgcmd, source_dir, env)
+    run_cmd_env(makecmd, source_dir, env)
+    run_cmd_env(makeinstallcmd, source_dir, env)
 
 
+def get_package_make_cmd(name):
+    if name == "gcc-stage-1":
+        cmd = "make -j{0} all-gcc".format(len(os.sched_getaffinity(0)))
+    else:
+        cmd = "make -j{0}".format(len(os.sched_getaffinity(0)))
+    return cmd
 
-
+def get_package_make_install_cmd(name):
+    if name == "gcc-stage-1":
+        cmd = "make install-gcc"
+    else:
+        cmd = "make install"
+    return cmd
 
 
 def get_package_build_config(name, top_install_dir, pkg_install_dir, build_triplet, host_triplet,target_triplet, pkg_spec):
@@ -226,7 +238,6 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
         --host={1} \
         --prefix={2} \
         --disable-shared \
-        --disable-nls \
         --with-gmp-prefix={3}".format(
             build_triplet,
             host_triplet,
@@ -258,9 +269,7 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             install_dir_mpc,
             install_dir_mpfr,
             install_dir_isl)
-
-
-    elif name == "gcc":
+    elif name == "gcc-stage-1":
         cmd = "./configure \
             --target={0} \
             --prefix={1} \
@@ -274,7 +283,7 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             --disable-libstdcxx-pch \
             --disable-nls \
             --disable-shared \
-            --disable-threads \
+            --enable-threads=zephyr\
             --disable-tls \
             --enable-languages=c\
             --without-headers\
@@ -293,6 +302,20 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             install_dir_mpc,
             install_dir_mpfr,
             install_dir_isl)
+    elif name == "newlib":
+        cmd = "./configure \
+                --target={0} \
+                --disable-newlib-supplied-syscalls \
+                --enable-newlib-reent-small \
+                --disable-newlib-fvwrite-in-streamio \
+                --disable-newlib-fseek-optimization \
+                --disable-newlib-wide-orient \
+                --disable-newlib-unbuf-stream-opt \
+                --enable-newlib global-atexit \
+                --enable-newlib-retargetable-locking \
+                --enable-newlib-global-stdio-streams \
+                --disable-nls".format(target_triplet)
+
 
     return cmd
 
@@ -314,24 +337,51 @@ def build_package(name, top_source_dir, top_install_dir , build_triplet, host_tr
     bpkg = get_package_spec(name, pkg_spec)
     bsource_dir = get_source_dir(top_source_dir, bpkg)
     binstall_dir = get_install_dir(top_install_dir, bpkg)
+    if os.path.exists(binstall_dir):
+        shutil.rmtree(binstall_dir, ignore_errors=True)
+
     env = get_build_env(name,top_install_dir, pkg_spec)
 
-    cmd = get_package_build_config(name, top_install_dir, binstall_dir, build_triplet, host_triplet,target_triplet, pkg_spec)
-    build_and_install(cmd, bsource_dir, env)
+    cfgcmd = get_package_build_config(name, top_install_dir, binstall_dir, build_triplet,
+                                   host_triplet,target_triplet, pkg_spec)
+    makecmd = get_package_make_cmd(name)
+    makeinstallcmd = get_package_make_install_cmd(name)
+    build_and_install(cfgcmd,makecmd,makeinstallcmd, bsource_dir, env)
 
 
 
 def build_host_toolchain(source_dir, host_install_dir ,host_triplet,target_triplet,pkg_spec):
     log_build_step("Build host toolchain")
-    bpacks = ["zlib" , "gmp" , "mpfr", "mpc", "isl", "expat", "binutils", "gcc"]
+    bpacks = {
+        "zlib" : 0,
+        "gmp" : 0,
+        "mpfr": 0,
+        "mpc": 0,
+        "isl": 0,
+        "expat": 0,
+        "binutils": 0,
+        "gcc-stage-1": 0}
 
-    if os.path.exists(host_install_dir):
-        shutil.rmtree(host_install_dir, ignore_errors=True)
 
-    os.makedirs(host_install_dir)
+    if not os.path.exists(host_install_dir):
+        os.makedirs(host_install_dir)
 
-    for pkg in bpacks:
-        build_package(pkg,source_dir, host_install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
+    for name, build in bpacks.items():
+        if build == 1:
+            build_package(name,source_dir, host_install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
+
+def build_toolchain_stage2(source_dir, install_dir ,host_triplet,target_triplet,pkg_spec):
+    log_build_step("Build stage 2")
+    bpacks = {
+        "newlib" : 1,
+        "gcc-stage-2": 0}
+
+    if not os.path.exists(install_dir):
+        os.makedirs(install_dir)
+
+    for name, build in bpacks.items():
+        if build == 1:
+            build_package(name,source_dir, install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
 
 
 if __name__ == '__main__':
@@ -344,33 +394,12 @@ if __name__ == '__main__':
     host_install_dir =install_dir + "/host"
     patch_dir = os.getcwd() + "/patches"
 
+    stage2_install_dir = install_dir + "/stage2"
+
     download_source_archives(dl_dir,pkg_spec)
     extract_source_archives(dl_dir,source_dir,patch_dir,pkg_spec)
     host_triplet = guess_host_triplet(source_dir,pkg_spec)
     build_host_toolchain(source_dir, host_install_dir ,host_triplet, target_triplet ,pkg_spec)
 
+    build_toolchain_stage2(source_dir, stage2_install_dir ,host_triplet, target_triplet ,pkg_spec)
 
-    #run_prebuild(dl_dir,source_dir,prebuild_dir,pkg_spec)
-    #buildZlib ${buildNative}
-    #"" "" ""
-
-    #buildGmp ${buildNative}
-    #"" "--build=${hostTriplet} --host=${hostTriplet}"
-
-    #buildMpfr ${buildNative}
-    #"" "--build=${hostTriplet} --host=${hostTriplet}"
-
-    #buildMpc ${buildNative}
-    #"" "--build=${hostTriplet} --host=${hostTriplet}"
-
-    #buildIsl ${buildNative}
-    #"" "--build=${hostTriplet} --host=${hostTriplet}"
-
-    #buildExpat ${buildNative}
-    #"" "--build=${hostTriplet} --host=${hostTriplet}"
-
-    #buildBinutils ${buildNative} ${installNative}
-    #"" "--build=${hostTriplet} --host=${hostTriplet}" "${documentationTypes}"
-
-    #buildGcc ${buildNative} ${installNative}
-    #"" "--enable-languages=c --without-headers"
