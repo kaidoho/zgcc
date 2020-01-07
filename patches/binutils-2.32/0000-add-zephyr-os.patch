@@ -1,6 +1,6 @@
-From dd75ca91c9cf809bc3f13dd654657a26d9e2ffab Mon Sep 17 00:00:00 2001
+From 2392be0ca00f74e4599663e7fe356850352210ec Mon Sep 17 00:00:00 2001
 From: kaidoho <kho237115@gmail.com>
-Date: Fri, 27 Dec 2019 10:08:38 -0500
+Date: Mon, 6 Jan 2020 11:17:13 +0100
 Subject: [PATCH] Add Zephyr OS
 
 ---
@@ -8,15 +8,15 @@ Subject: [PATCH] Add Zephyr OS
  binutils/testsuite/lib/binutils-common.exp |  2 ++
  config.sub                                 |  2 +-
  config/gthr.m4                             |  1 +
- configure                                  |  6 ++++++
- configure.ac                               |  6 ++++++
+ configure                                  |  8 ++++++++
+ configure.ac                               |  8 ++++++++
  gas/configure.tgt                          |  4 ++--
- gas/testsuite/gas/i386/i386.exp            |  1 +
+ gas/testsuite/gas/i386/i386.exp            |  3 ++-
  ld/configure.tgt                           | 12 ++++++------
- 9 files changed, 29 insertions(+), 13 deletions(-)
+ 9 files changed, 34 insertions(+), 14 deletions(-)
 
 diff --git a/bfd/config.bfd b/bfd/config.bfd
-index 0e1ddb65..d4abd0ce 100644
+index 0e1ddb65..d631aa8f 100644
 --- a/bfd/config.bfd
 +++ b/bfd/config.bfd
 @@ -230,7 +230,7 @@ case "${targ}" in
@@ -24,7 +24,7 @@ index 0e1ddb65..d4abd0ce 100644
      want64=true
      ;;
 -  aarch64-*-elf | aarch64-*-rtems*)
-+  aarch64-*-elf | aarch64-*-zephyr* | aarch64-*-rtems*)
++  aarch64-*-elf | aarch64-*-rtems* | aarch64-*-zephyr*)
      targ_defvec=aarch64_elf64_le_vec
      targ_selvecs="aarch64_elf64_be_vec aarch64_elf32_le_vec aarch64_elf32_be_vec arm_elf32_le_vec arm_elf32_be_vec"
      want64=true
@@ -33,7 +33,7 @@ index 0e1ddb65..d4abd0ce 100644
    arm-*-elf | arm*-*-freebsd* | arm*-*-linux-* | arm*-*-conix* | \
    arm*-*-uclinux* | arm-*-kfreebsd*-gnu | \
 -  arm*-*-eabi* | arm-*-rtems* | arm*-*-uclinuxfdpiceabi)
-+  arm*-*-eabi* | arm-*-zephyr* | arm-*-rtems* | arm*-*-uclinuxfdpiceabi)
++  arm*-*-eabi* | arm-*-rtems* | arm*-*-uclinuxfdpiceabi | arm-*-zephyr*)
      targ_defvec=arm_elf32_le_vec
      targ_selvecs="arm_elf32_fdpic_le_vec arm_elf32_be_vec arm_elf32_fdpic_be_vec"
      ;;
@@ -42,7 +42,7 @@ index 0e1ddb65..d4abd0ce 100644
      ;;
  
 -  i[3-7]86-*-elf* | i[3-7]86-*-rtems*)
-+  i[3-7]86-*-elf* | i[3-7]86-*-zephyr* | i[3-7]86-*-rtems*)
++  i[3-7]86-*-elf* | i[3-7]86-*-rtems* | i[3-7]86-*-zephyr*)
      targ_defvec=i386_elf32_vec
      targ_selvecs="iamcu_elf32_vec i386_coff_vec"
      ;;
@@ -51,7 +51,7 @@ index 0e1ddb65..d4abd0ce 100644
      want64=true
      ;;
 -  x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia)
-+  x86_64-*-elf*  | x86_64-*-zephyr* | x86_64-*-rtems* | x86_64-*-fuchsia)
++  x86_64-*-elf*  | x86_64-*-rtems* | x86_64-*-fuchsia | x86_64-*-zephyr*)
      targ_defvec=x86_64_elf64_vec
      targ_selvecs="i386_elf32_vec iamcu_elf32_vec x86_64_elf32_vec l1om_elf64_vec k1om_elf64_vec"
      case "${targ}" in
@@ -89,67 +89,85 @@ index 75bb6a31..f4117175 100755
  	     | linux-newlib* | linux-musl* | linux-uclibc* \
  	     | uxpv* | beos* | mpeix* | udk* | moxiebox* \
 diff --git a/config/gthr.m4 b/config/gthr.m4
-index 7b29f1f3..4bf16446 100644
+index 7b29f1f3..265639b7 100644
 --- a/config/gthr.m4
 +++ b/config/gthr.m4
-@@ -17,6 +17,7 @@ case $1 in
-     mipssde)	thread_header=config/mips/gthr-mipssde.h ;;
-     posix)	thread_header=gthr-posix.h ;;
-     rtems)	thread_header=config/gthr-rtems.h ;;
-+    zephyr)	thread_header=config/gthr-zephyr.h ;;
-     single)	thread_header=gthr-single.h ;;
+@@ -21,6 +21,7 @@ case $1 in
      tpf)	thread_header=config/s390/gthr-tpf.h ;;
      vxworks)	thread_header=config/gthr-vxworks.h ;;
+     win32)	thread_header=config/i386/gthr-win32.h ;;
++    zephyr)	thread_header=config/gthr-zephyr.h ;;
+ esac
+ AC_SUBST(thread_header)
+ ])
 diff --git a/configure b/configure
-index 37476459..acaac25f 100755
+index 37476459..acaadf6f 100755
 --- a/configure
 +++ b/configure
-@@ -3409,6 +3409,9 @@ case "${target}" in
-   *-*-rtems*)
+@@ -3418,6 +3418,9 @@ case "${target}" in
+   *-*-vxworks*)
      noconfigdirs="$noconfigdirs target-libffi"
      ;;
 +  *-*-zephyr*)
 +    noconfigdirs="$noconfigdirs target-libffi"
 +    ;;
-   *-*-tpf*)
+   aarch64*-*-freebsd*)
      noconfigdirs="$noconfigdirs target-libffi"
      ;;
-@@ -3653,6 +3656,9 @@ case "${target}" in
-   *-*-rtems*)
-     noconfigdirs="$noconfigdirs target-libgloss"
+@@ -3602,6 +3605,9 @@ case "${target}" in
+   *-*-vxworks*)
+     noconfigdirs="$noconfigdirs target-newlib target-libgloss"
      ;;
 +  *-*-zephyr*)
-+    noconfigdirs="$noconfigdirs target-libgloss"
++    noconfigdirs="$noconfigdirs target-newlib target-libgloss"
 +    ;;
-     # The tpf target doesn't support gdb yet.
-   *-*-tpf*)
-     noconfigdirs="$noconfigdirs gdb tcl tk libgui itcl"
+ esac
+ 
+ case "${target}" in
+@@ -3662,6 +3668,8 @@ case "${target}" in
+     ;;
+   *-*-vxworks*)
+     ;;
++  *-*-zephyr*)
++    ;;
+   alpha*-dec-osf*)
+     # ld works, but does not support shared libraries.
+     # gas doesn't generate exception information.
 diff --git a/configure.ac b/configure.ac
-index 279b655a..ea3651fc 100644
+index 279b655a..c590506f 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -706,6 +706,9 @@ case "${target}" in
-   *-*-rtems*)
+@@ -715,6 +715,9 @@ case "${target}" in
+   *-*-vxworks*)
      noconfigdirs="$noconfigdirs target-libffi"
      ;;
 +  *-*-zephyr*)
 +    noconfigdirs="$noconfigdirs target-libffi"
 +    ;;
-   *-*-tpf*)
+   aarch64*-*-freebsd*)
      noconfigdirs="$noconfigdirs target-libffi"
      ;;
-@@ -950,6 +953,9 @@ case "${target}" in
-   *-*-rtems*)
-     noconfigdirs="$noconfigdirs target-libgloss"
+@@ -899,6 +902,9 @@ case "${target}" in
+   *-*-vxworks*)
+     noconfigdirs="$noconfigdirs target-newlib target-libgloss"
      ;;
 +  *-*-zephyr*)
-+    noconfigdirs="$noconfigdirs target-libgloss"
++    noconfigdirs="$noconfigdirs target-newlib target-libgloss"
 +    ;;
-     # The tpf target doesn't support gdb yet.
-   *-*-tpf*)
-     noconfigdirs="$noconfigdirs gdb tcl tk libgui itcl"
+ esac
+ 
+ case "${target}" in
+@@ -959,6 +965,8 @@ case "${target}" in
+     ;;
+   *-*-vxworks*)
+     ;;
++  *-*-zephyr*)
++    ;;
+   alpha*-dec-osf*)
+     # ld works, but does not support shared libraries.
+     # gas doesn't generate exception information.
 diff --git a/gas/configure.tgt b/gas/configure.tgt
-index 616d2113..0972dda3 100644
+index 616d2113..ef213e00 100644
 --- a/gas/configure.tgt
 +++ b/gas/configure.tgt
 @@ -139,7 +139,7 @@ case ${generic_target} in
@@ -157,7 +175,7 @@ index 616d2113..0972dda3 100644
    arm-*-phoenix*)			fmt=elf ;;
    arm-*-elf)				fmt=elf ;;
 -  arm-*-eabi* | arm-*-rtems*)		fmt=elf em=armeabi ;;
-+  arm-*-eabi* | arm-*-zephyr* | arm-*-rtems*)		fmt=elf em=armeabi ;;
++  arm-*-eabi* | arm-*-rtems* | arm-*-zephyr*)		fmt=elf em=armeabi ;;
    arm-*-symbianelf*)			fmt=elf em=symbian ;;
    arm-*-kaos*)				fmt=elf ;;
    arm-*-conix*)				fmt=elf ;;
@@ -166,24 +184,26 @@ index 616d2113..0972dda3 100644
    *-*-xray | *-*-hms)			fmt=coff ;;
    *-*-sim)				fmt=coff ;;
 -  *-*-elf | *-*-rtems* | *-*-sysv4*)	fmt=elf ;;
-+  *-*-elf | *-*-zephyr* | *-*-rtems* | *-*-sysv4*)	fmt=elf ;;
++  *-*-elf | *-*-rtems* | *-*-sysv4* | *-*-zephyr*)	fmt=elf ;;
    *-*-solaris*)				fmt=elf em=solaris ;;
    *-*-aros*)				fmt=elf em=linux ;;
    *-*-vxworks* | *-*-windiss)		fmt=elf em=vxworks ;;
 diff --git a/gas/testsuite/gas/i386/i386.exp b/gas/testsuite/gas/i386/i386.exp
-index 22ee134f..3cdffdc8 100644
+index 22ee134f..5411bb6d 100644
 --- a/gas/testsuite/gas/i386/i386.exp
 +++ b/gas/testsuite/gas/i386/i386.exp
-@@ -992,6 +992,7 @@ if [expr ([istarget "i*86-*-*"] || [istarget "x86_64-*-*"]) && [gas_64_check]] t
-       && ![istarget "*-*-moss*"]
-       && ![istarget "*-*-nto-qnx*"]
+@@ -994,7 +994,8 @@ if [expr ([istarget "i*86-*-*"] || [istarget "x86_64-*-*"]) && [gas_64_check]] t
        && ![istarget "*-*-rtems*"]
-+      && ![istarget "*-*-zephyr*"]
        && ![istarget "*-*-sco*"]
        && ![istarget "*-*-solaris*"]
-       && ![istarget "*-*-sysv*"] } then {
+-      && ![istarget "*-*-sysv*"] } then {
++      && ![istarget "*-*-sysv*"]
++      && ![istarget "*-*-zephyr*"] } then {
+ 	run_dump_test "rex"
+     }
+ 
 diff --git a/ld/configure.tgt b/ld/configure.tgt
-index beba17ef..fa76a134 100644
+index beba17ef..c266a309 100644
 --- a/ld/configure.tgt
 +++ b/ld/configure.tgt
 @@ -47,7 +47,7 @@ targ64_extra_libpath=
@@ -191,7 +211,7 @@ index beba17ef..fa76a134 100644
  aarch64_be-*-elf)	targ_emul=aarch64elfb
  			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b armelfb armelf" ;;
 -aarch64-*-elf | aarch64-*-rtems*)
-+aarch64-*-elf | aarch64-*-zephyr* | aarch64-*-rtems*)
++aarch64-*-elf | aarch64-*-rtems* | aarch64-*-zephyr*)
  			targ_emul=aarch64elf
  			targ_extra_emuls="aarch64elf32 aarch64elf32b aarch64elfb armelf armelfb" ;;
  aarch64-*-cloudabi*)	targ_emul=aarch64cloudabi
@@ -200,7 +220,7 @@ index beba17ef..fa76a134 100644
  armeb-*-elf | armeb-*-eabi*)
  			targ_emul=armelfb ;;
 -arm-*-elf | arm*-*-eabi* | arm-*-rtems*)
-+arm-*-elf | arm*-*-eabi* | arm*-*-zephyr*  | arm-*-rtems*)
++arm-*-elf | arm*-*-eabi* | arm-*-rtems* | arm*-*-zephyr* )
  			targ_emul=armelf ;;
  arm*-*-symbianelf*)	targ_emul=armsymbian;;
  arm-*-kaos*)		targ_emul=armelf ;;
@@ -209,11 +229,11 @@ index beba17ef..fa76a134 100644
  i[3-7]86-*-elfiamcu)	targ_emul=elf_iamcu
  			targ_extra_emuls=elf_i386 ;;
 -i[3-7]86-*-elf* | i[3-7]86-*-rtems*)
-+i[3-7]86-*-elf* | i[3-7]86-*-zephyr* | i[3-7]86-*-rtems*)
++i[3-7]86-*-elf* | i[3-7]86-*-rtems* | i[3-7]86-*-zephyr*)
  			targ_emul=elf_i386
  			targ_extra_emuls=elf_iamcu ;;
 -x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia*)
-+x86_64-*-elf* | x86_64-*-zephyr* | x86_64-*-rtems* | x86_64-*-fuchsia*)
++x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia* | x86_64-*-zephyr*)
  			targ_emul=elf_x86_64
  			targ_extra_emuls="elf_i386 elf_iamcu elf32_x86_64 elf_l1om elf_k1om"
  			targ_extra_libpath="elf_i386 elf_iamcu elf32_x86_64 elf_l1om elf_k1om"

@@ -1,15 +1,17 @@
 {
     "packages": [
-        {  "name": "binutils", "version": "2.32", "origin": "http://ftp.gnu.org/gnu/binutils/" , "suffix": "tar.gz"},
-        {  "name": "gmp", "version": "6.1.2", "origin": "http://ftp.gnu.org/gnu/gmp/" , "suffix": "tar.xz"},
-        {  "name": "isl", "version": "0.21", "origin": "http://isl.gforge.inria.fr/" , "suffix": "tar.xz"},
-        {  "name": "libiconv", "version": "1.16", "origin": "http://ftp.gnu.org/pub/gnu/libiconv/" , "suffix": "tar.gz"},
-        {  "name": "mpc", "version": "1.1.0", "origin": "http://ftp.gnu.org/gnu/mpc/" , "suffix": "tar.gz"},
-        {  "name": "mpfr", "version": "4.0.2", "origin": "http://ftp.gnu.org/gnu/mpfr/" , "suffix": "tar.xz"},
-        {  "name": "newlib", "version": "3.1.0", "origin": "http://sourceware.org/pub/newlib/" , "suffix": "tar.gz"},
-        {  "name": "zlib", "version": "1.2.11", "origin": "https://www.zlib.net/fossils/" , "suffix": "tar.gz"},
-        {  "name": "expat", "version": "2.2.7", "origin": "https://github.com/libexpat/libexpat/releases/download/R_2_2_7/" , "suffix": "tar.gz"},
-        {  "name": "gdb", "version": "8.3", "origin": "http://ftp.gnu.org/gnu/gdb/" , "suffix": "tar.xz"},
-        {  "name": "gcc", "version": "9.2.0", "origin": "http://ftp.gnu.org/gnu/gcc/gcc-9.2.0" , "suffix": "tar.xz"}
+
+        {  "name": "gmp", "version": "6.1.2","stage": "0", "origin": "http://ftp.gnu.org/gnu/gmp/" , "suffix": "tar.xz"},
+        {  "name": "isl", "version": "0.21","stage": "0", "origin": "http://isl.gforge.inria.fr/" , "suffix": "tar.xz"},
+        {  "name": "libiconv", "version": "1.16","stage": "0", "origin": "http://ftp.gnu.org/pub/gnu/libiconv/" , "suffix": "tar.gz"},
+        {  "name": "mpc", "version": "1.1.0","stage": "0", "origin": "http://ftp.gnu.org/gnu/mpc/" , "suffix": "tar.gz"},
+        {  "name": "mpfr", "version": "4.0.2","stage": "0", "origin": "http://ftp.gnu.org/gnu/mpfr/" , "suffix": "tar.xz"},
+        {  "name": "zlib", "version": "1.2.11","stage": "0", "origin": "https://www.zlib.net/fossils/" , "suffix": "tar.gz"},
+        {  "name": "expat", "version": "2.2.7","stage": "0", "origin": "https://github.com/libexpat/libexpat/releases/download/R_2_2_7/" , "suffix": "tar.gz"},
+        {  "name": "binutils", "version": "2.32","stage": "1", "origin": "http://ftp.gnu.org/gnu/binutils/" , "suffix": "tar.gz"},
+        {  "name": "gcc", "version": "9.2.0","stage": "1", "origin": "http://ftp.gnu.org/gnu/gcc/gcc-9.2.0" , "suffix": "tar.xz"},
+        {  "name": "newlib", "version": "3.1.0","stage": "2", "origin": "http://sourceware.org/pub/newlib/" , "suffix": "tar.gz"},
+        {  "name": "gcc", "version": "9.2.0","stage": "2", "origin": "http://ftp.gnu.org/gnu/gcc/gcc-9.2.0" , "suffix": "tar.xz"},
+        {  "name": "gdb", "version": "8.3","stage": "2", "origin": "http://ftp.gnu.org/gnu/gdb/" , "suffix": "tar.xz"}
     ]
 }

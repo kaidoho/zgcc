@@ -65,11 +65,6 @@ def download_source_archives(dl_dir,pkg_spec):
         download_archive(dl_dir, pkg)
 
 
-
-
-
-
-
 def run_cmd_env(cmd, workdir,cmd_env ):
 
   logger.warning("Building with {0}".format(cmd))
@@ -119,14 +114,48 @@ def extract_source_archives(dl_dir, source_dir, patch_dir, pkg_spec):
         os.mkdir(source_dir)
 
     for pkg in pkg_spec['packages']:
-        extract_package(dl_dir, source_dir,patch_dir,pkg)
+        local_source_dir = source_dir + "/stage"+ pkg['stage']
+        if False == os.path.exists(local_source_dir):
+            os.mkdir(local_source_dir)
 
+        extract_package(dl_dir, local_source_dir,patch_dir,pkg)
+
+
+def read_package_spec():
+    if os.path.isfile('packages.json'):
+        with open('packages.json', 'r') as f:
+             return json.load(f)
+    else:
+        logger.error("Can't find package specification")
+        exit(-1)
+
+
+def get_source_dir(top ,pkg):
+    return top + "/stage"+ pkg['stage'] + "/" + pkg['name'] + "-" + pkg['version']
+
+
+def get_install_dir(top ,pkg):
+
+    if pkg['stage'] == "0":
+        return top + "/stage"+ pkg['stage'] + "/" + pkg['name'] + "-" + pkg['version']
+
+    return top + "/stage"+ pkg['stage']
+
+def get_package_spec(name , pkg_spec):
+    idx = name.find('-')
+
+    if idx != -1:
+        name = name[:idx]
+
+    for pkg in pkg_spec['packages']:
+        if pkg["name"] == name:
+            return pkg
 
 def guess_host_triplet(src_dir,pkg_spec):
     log_build_step("Identify host triplet")
     cmd = ["./config.guess"]
-    pkg=pkg_spec['packages'][0]
-    workdir = src_dir + "/" + pkg['name'] + "-" + pkg['version']
+    pkg=get_package_spec("binutils", pkg_spec)
+    workdir = src_dir + "/stage" + pkg['stage'] + "/" + pkg['name'] + "-" + pkg['version']
 
     p = Popen(cmd, stdout=PIPE, stderr=STDOUT, bufsize=1, cwd=workdir)
     for line in iter(p.stdout.readline, b''):
@@ -143,33 +172,6 @@ def guess_host_triplet(src_dir,pkg_spec):
     logger.info("Host is: {0}".format(tmp))
 
     return tmp
-
-def read_package_spec():
-    if os.path.isfile('packages.json'):
-        with open('packages.json', 'r') as f:
-             return json.load(f)
-    else:
-        logger.error("Can't find package specification")
-        exit(-1)
-
-
-def get_source_dir(top ,pkg):
-    return top + "/" + pkg['name'] + "-" + pkg['version']
-
-
-def get_install_dir(top ,pkg):
-    return top + "/" + pkg['name'] + "-" + pkg['version']
-
-
-def get_package_spec(name , pkg_spec):
-    idx = name.find('-')
-
-    if idx != -1:
-        name = name[:idx]
-
-    for pkg in pkg_spec['packages']:
-        if pkg["name"] == name:
-            return pkg
 
 
 def build_and_install(cfgcmd,makecmd,makeinstallcmd,  source_dir, env):
@@ -304,30 +306,38 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             install_dir_isl)
     elif name == "newlib":
         cmd = "./configure \
-                --target={0} \
-                --disable-newlib-supplied-syscalls \
-                --enable-newlib-reent-small \
-                --disable-newlib-fvwrite-in-streamio \
-                --disable-newlib-fseek-optimization \
-                --disable-newlib-wide-orient \
-                --disable-newlib-unbuf-stream-opt \
-                --enable-newlib global-atexit \
-                --enable-newlib-retargetable-locking \
-                --enable-newlib-global-stdio-streams \
-                --disable-nls".format(target_triplet)
+            --target={0} \
+            --disable-newlib-supplied-syscalls \
+            --enable-newlib-reent-small \
+            --disable-newlib-fvwrite-in-streamio \
+            --disable-newlib-fseek-optimization \
+            --disable-newlib-wide-orient \
+            --disable-newlib-unbuf-stream-opt \
+            --enable-newlib-global-atexit \
+            --enable-newlib-retargetable-locking \
+            --enable-newlib-global-stdio-streams \
+            --disable-nls".format(target_triplet)
 
 
     return cmd
 
 def get_build_env(name,top_install_dir, pkg_spec):
     env = os.environ.copy()
-    install_dir_zlib = get_install_dir(top_install_dir, get_package_spec("gmp", pkg_spec))
+    install_dir_zlib = get_install_dir(top_install_dir, get_package_spec("zlib", pkg_spec))
 
-    if (name == "binutils") or (name == "gcc"):
+    if (name == "binutils") or (name == "gcc-stage-1"):
         cppflags = "-I{0}/include".format(install_dir_zlib)
         ldflags = "-L{0}/lib".format(install_dir_zlib)
         env["CPPFLAGS"] = cppflags
         env["LDFLAGS"] = ldflags
+    elif (name == "newlib") or (name == "gcc-stage-2"):
+        cppflags = "-I{0}/include".format(install_dir_zlib)
+        ldflags = "-L{0}/lib".format(install_dir_zlib)
+        install_dir_gcc = get_install_dir(top_install_dir, get_package_spec("gcc", pkg_spec))+ "/bin"
+        logger.warning("GCC Install Dir: {0}".format(install_dir_gcc))
+        env["CPPFLAGS"] = cppflags
+        env["LDFLAGS"] = ldflags
+        env["PATH"] += os.pathsep + install_dir_gcc
 
     return env
 
@@ -337,8 +347,6 @@ def build_package(name, top_source_dir, top_install_dir , build_triplet, host_tr
     bpkg = get_package_spec(name, pkg_spec)
     bsource_dir = get_source_dir(top_source_dir, bpkg)
     binstall_dir = get_install_dir(top_install_dir, bpkg)
-    if os.path.exists(binstall_dir):
-        shutil.rmtree(binstall_dir, ignore_errors=True)
 
     env = get_build_env(name,top_install_dir, pkg_spec)
 
@@ -350,27 +358,39 @@ def build_package(name, top_source_dir, top_install_dir , build_triplet, host_tr
 
 
 
-def build_host_toolchain(source_dir, host_install_dir ,host_triplet,target_triplet,pkg_spec):
+def build_stage0(source_dir, install_dir ,host_triplet,target_triplet,pkg_spec):
     log_build_step("Build host toolchain")
     bpacks = {
-        "zlib" : 0,
-        "gmp" : 0,
-        "mpfr": 0,
-        "mpc": 0,
-        "isl": 0,
-        "expat": 0,
-        "binutils": 0,
-        "gcc-stage-1": 0}
+        "zlib" : 1,
+        "gmp" : 1,
+        "mpfr": 1,
+        "mpc": 1,
+        "isl": 1,
+        "expat": 1}
 
-
-    if not os.path.exists(host_install_dir):
-        os.makedirs(host_install_dir)
+    if not os.path.exists(install_dir):
+        os.makedirs(install_dir)
 
     for name, build in bpacks.items():
         if build == 1:
-            build_package(name,source_dir, host_install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
+            build_package(name,source_dir, install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
 
-def build_toolchain_stage2(source_dir, install_dir ,host_triplet,target_triplet,pkg_spec):
+def build_stage1(source_dir, install_dir, host_triplet, target_triplet, pkg_spec):
+    log_build_step("Build host toolchain")
+    bpacks = {
+        "binutils": 1,
+        "gcc-stage-1": 1}
+
+    if not os.path.exists(install_dir):
+        os.makedirs(install_dir)
+
+    for name, build in bpacks.items():
+        if build == 1:
+            build_package(name, source_dir, install_dir, host_triplet, host_triplet, target_triplet,
+                          pkg_spec)
+
+
+def build_stage2(source_dir, install_dir, host_triplet, target_triplet, pkg_spec):
     log_build_step("Build stage 2")
     bpacks = {
         "newlib" : 1,
@@ -384,22 +404,31 @@ def build_toolchain_stage2(source_dir, install_dir ,host_triplet,target_triplet,
             build_package(name,source_dir, install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
 
 
+
+
 if __name__ == '__main__':
 
-    target_triplet = "arm-zephyr2"
+    target_triplet = "arm-none-zephyr2"
     pkg_spec = read_package_spec()
     dl_dir = os.getcwd() + "/archives"
     source_dir = os.getcwd() + "/source"
     install_dir = os.getcwd() + "/install"
-    host_install_dir =install_dir + "/host"
+    stage0_install_dir =install_dir + "/stage0"
+    stage1_install_dir = install_dir + "/stage1"
     patch_dir = os.getcwd() + "/patches"
 
     stage2_install_dir = install_dir + "/stage2"
 
-    download_source_archives(dl_dir,pkg_spec)
-    extract_source_archives(dl_dir,source_dir,patch_dir,pkg_spec)
-    host_triplet = guess_host_triplet(source_dir,pkg_spec)
-    build_host_toolchain(source_dir, host_install_dir ,host_triplet, target_triplet ,pkg_spec)
 
-    build_toolchain_stage2(source_dir, stage2_install_dir ,host_triplet, target_triplet ,pkg_spec)
+    download_source_archives(dl_dir,pkg_spec)
+    extract_source_archives(dl_dir, source_dir, patch_dir, pkg_spec)
+
+    host_triplet = guess_host_triplet(source_dir,pkg_spec)
+
+    #build_stage0(source_dir, install_dir ,host_triplet, target_triplet ,pkg_spec)
+    #build_stage1(source_dir, install_dir, host_triplet, target_triplet, pkg_spec)
+    build_stage2(source_dir, install_dir, host_triplet, target_triplet, pkg_spec)
+
+
+    #build_toolchain_stage2(source_dir, stage2_install_dir ,host_triplet, target_triplet ,pkg_spec)
 
