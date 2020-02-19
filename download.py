@@ -307,6 +307,7 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
     elif name == "newlib":
         cmd = "./configure \
             --target={0} \
+            --prefix={0} \
             --disable-newlib-supplied-syscalls \
             --enable-newlib-reent-small \
             --disable-newlib-fvwrite-in-streamio \
@@ -315,7 +316,7 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             --disable-newlib-unbuf-stream-opt \
             --enable-newlib-global-atexit \
             --enable-newlib-global-stdio-streams \
-            --disable-nls".format(target_triplet)
+            --disable-nls".format(target_triplet,pkg_install_dir)
 
 
     return cmd
