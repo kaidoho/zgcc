@@ -10,7 +10,7 @@ from time import sleep
 import urllib.request
 import tarfile
 import pathlib
-
+import collections
 
 logfile = os.getcwd() + "/log.txt"
 
@@ -285,7 +285,7 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             --disable-libstdcxx-pch \
             --disable-nls \
             --disable-shared \
-            --enable-threads=zephyr\
+            --enable-threads=posix\
             --disable-tls \
             --enable-languages=c\
             --without-headers\
@@ -314,7 +314,6 @@ def get_package_build_config(name, top_install_dir, pkg_install_dir, build_tripl
             --disable-newlib-wide-orient \
             --disable-newlib-unbuf-stream-opt \
             --enable-newlib-global-atexit \
-            --enable-newlib-retargetable-locking \
             --enable-newlib-global-stdio-streams \
             --disable-nls".format(target_triplet)
 
@@ -344,6 +343,7 @@ def get_build_env(name,top_install_dir, pkg_spec):
 
 
 def build_package(name, top_source_dir, top_install_dir , build_triplet, host_triplet,target_triplet,pkg_spec):
+    logger.info("Building {0}".format(name))
     bpkg = get_package_spec(name, pkg_spec)
     bsource_dir = get_source_dir(top_source_dir, bpkg)
     binstall_dir = get_install_dir(top_install_dir, bpkg)
@@ -360,13 +360,14 @@ def build_package(name, top_source_dir, top_install_dir , build_triplet, host_tr
 
 def build_stage0(source_dir, install_dir ,host_triplet,target_triplet,pkg_spec):
     log_build_step("Build host toolchain")
-    bpacks = {
-        "zlib" : 1,
-        "gmp" : 1,
-        "mpfr": 1,
-        "mpc": 1,
-        "isl": 1,
-        "expat": 1}
+    bpacks = collections.OrderedDict()
+
+    bpacks["zlib"] = 1
+    bpacks["gmp"] = 1
+    bpacks["mpfr"] = 1
+    bpacks["mpc"]= 1
+    bpacks["isl"]= 1
+    bpacks["expat"]= 1
 
     if not os.path.exists(install_dir):
         os.makedirs(install_dir)
@@ -376,10 +377,12 @@ def build_stage0(source_dir, install_dir ,host_triplet,target_triplet,pkg_spec):
             build_package(name,source_dir, install_dir , host_triplet, host_triplet, target_triplet, pkg_spec)
 
 def build_stage1(source_dir, install_dir, host_triplet, target_triplet, pkg_spec):
-    log_build_step("Build host toolchain")
-    bpacks = {
-        "binutils": 1,
-        "gcc-stage-1": 1}
+    log_build_step("Build stage 1")
+    bpacks = collections.OrderedDict()
+
+    bpacks["binutils"] = 1
+    bpacks["gcc-stage-1"] = 1
+
 
     if not os.path.exists(install_dir):
         os.makedirs(install_dir)
@@ -392,12 +395,15 @@ def build_stage1(source_dir, install_dir, host_triplet, target_triplet, pkg_spec
 
 def build_stage2(source_dir, install_dir, host_triplet, target_triplet, pkg_spec):
     log_build_step("Build stage 2")
-    bpacks = {
-        "newlib" : 1,
-        "gcc-stage-2": 0}
+    bpacks = collections.OrderedDict()
 
-    if not os.path.exists(install_dir):
-        os.makedirs(install_dir)
+    bpacks["newlib"] = 1
+    bpacks["gcc-stage-2"] = 0
+
+
+    if os.path.exists(install_dir + "/stage2"):
+        shutil.rmtree(install_dir + "/stage2")
+    os.makedirs(install_dir + "/stage2")
 
     for name, build in bpacks.items():
         if build == 1:
@@ -408,7 +414,7 @@ def build_stage2(source_dir, install_dir, host_triplet, target_triplet, pkg_spec
 
 if __name__ == '__main__':
 
-    target_triplet = "arm-none-zephyr2"
+    target_triplet = "arm-sdk-zephyr2-eabi"
     pkg_spec = read_package_spec()
     dl_dir = os.getcwd() + "/archives"
     source_dir = os.getcwd() + "/source"
@@ -420,13 +426,15 @@ if __name__ == '__main__':
     stage2_install_dir = install_dir + "/stage2"
 
 
-    download_source_archives(dl_dir,pkg_spec)
-    extract_source_archives(dl_dir, source_dir, patch_dir, pkg_spec)
+    #download_source_archives(dl_dir,pkg_spec)
+    #extract_source_archives(dl_dir, source_dir, patch_dir, pkg_spec)
 
     host_triplet = guess_host_triplet(source_dir,pkg_spec)
 
-    #build_stage0(source_dir, install_dir ,host_triplet, target_triplet ,pkg_spec)
-    #build_stage1(source_dir, install_dir, host_triplet, target_triplet, pkg_spec)
+#    build_stage0(source_dir, install_dir ,host_triplet, target_triplet ,pkg_spec)
+#    build_stage1(source_dir, install_dir, host_triplet, target_triplet, pkg_spec)
+
+
     build_stage2(source_dir, install_dir, host_triplet, target_triplet, pkg_spec)
 
 
